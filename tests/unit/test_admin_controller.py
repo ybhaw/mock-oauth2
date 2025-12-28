@@ -1,6 +1,6 @@
 """Unit tests for src/controllers/admin_controller.py"""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -332,14 +332,14 @@ class TestAuthManagementRoutes:
             client=test_client_oauth,
             user=test_user,
             scopes="openid",
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
         AccessToken.create(
             token="valid-1",
             client=test_client_oauth,
             user=test_user,
             scopes="openid",
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
         )
 
         response = client.post("/admin/auth/revoke-expired")

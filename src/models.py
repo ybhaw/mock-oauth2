@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import secrets
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Self
 
 from peewee import (
@@ -36,7 +36,7 @@ def _convert_datetime(val: bytes | str) -> datetime:
         if val.endswith("Z"):
             val = val[:-1] + "+00:00"
         return datetime.fromisoformat(val)
-    return datetime.fromisoformat(val).replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(val).replace(tzinfo=UTC)
 
 
 sqlite3.register_adapter(datetime, _adapt_datetime)
@@ -61,7 +61,7 @@ class BaseModel(Model):
     created_at: datetime
 
     id = AutoField(primary_key=True)
-    created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
+    created_at = DateTimeField(default=lambda: datetime.now(tz=UTC))
 
     class Meta:
         database = db
@@ -135,7 +135,7 @@ class AuthorizationCode(BaseModel):
         scopes: str,
     ) -> Self:
         code = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(
+        expires_at = datetime.now(UTC) + timedelta(
             seconds=config.AUTHORIZATION_CODE_EXPIRES_IN
         )
         return cls.create(
@@ -148,7 +148,7 @@ class AuthorizationCode(BaseModel):
         )
 
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
 
 class AccessToken(BaseModel):
@@ -177,7 +177,7 @@ class AccessToken(BaseModel):
         if expires_in is None:
             expires_in = config.ACCESS_TOKEN_EXPIRES_IN
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+        expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
         return cls.create(
             token=token,
             client=client,
@@ -187,7 +187,7 @@ class AccessToken(BaseModel):
         )
 
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def is_valid(self) -> bool:
         return not self.revoked and not self.is_expired()
@@ -213,7 +213,7 @@ class RefreshToken(BaseModel):
         if expires_in is None:
             expires_in = config.REFRESH_TOKEN_EXPIRES_IN
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+        expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
         return cls.create(
             token=token,
             access_token=access_token,
@@ -221,7 +221,7 @@ class RefreshToken(BaseModel):
         )
 
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def is_valid(self) -> bool:
         return not self.revoked and not self.is_expired()

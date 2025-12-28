@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -136,7 +136,7 @@ def expired_access_token(setup_database, test_user, test_client_oauth):
         client=test_client_oauth,
         user=test_user,
         scopes="openid",
-        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        expires_at=datetime.now(UTC) - timedelta(hours=1),
     )
     return token
 
@@ -151,7 +151,7 @@ def revoked_access_token(setup_database, test_user, test_client_oauth):
         client=test_client_oauth,
         user=test_user,
         scopes="openid",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
         revoked=True,
     )
     return token

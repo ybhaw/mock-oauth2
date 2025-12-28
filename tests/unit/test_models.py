@@ -1,6 +1,6 @@
 """Unit tests for src/models.py"""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import peewee
 import pytest
@@ -237,7 +237,7 @@ class TestAuthorizationCode:
             user=test_user,
             redirect_uri="http://localhost/cb",
             scopes="openid",
-            expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+            expires_at=datetime.now(UTC) - timedelta(minutes=1),
         )
         assert auth_code.is_expired() is True
 
@@ -274,7 +274,7 @@ class TestAccessToken:
             scopes="openid",
             expires_in=60,  # 1 minute
         )
-        expected_expiry = datetime.now(timezone.utc) + timedelta(seconds=60)
+        expected_expiry = datetime.now(UTC) + timedelta(seconds=60)
         # Allow 5 second tolerance
         assert abs((token.expires_at - expected_expiry).total_seconds()) < 5
 
@@ -322,7 +322,7 @@ class TestRefreshToken:
             test_access_token,
             expires_in=86400,  # 1 day
         )
-        expected_expiry = datetime.now(timezone.utc) + timedelta(seconds=86400)
+        expected_expiry = datetime.now(UTC) + timedelta(seconds=86400)
         # Allow 5 second tolerance
         assert abs((refresh_token.expires_at - expected_expiry).total_seconds()) < 5
 
@@ -341,7 +341,7 @@ class TestRefreshToken:
         refresh_token = RefreshToken.create(
             token="expired-refresh",
             access_token=test_access_token,
-            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+            expires_at=datetime.now(UTC) - timedelta(days=1),
         )
         assert refresh_token.is_expired() is True
 
@@ -354,7 +354,7 @@ class TestRefreshToken:
         refresh_token = RefreshToken.create(
             token="revoked-refresh",
             access_token=test_access_token,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            expires_at=datetime.now(UTC) + timedelta(days=30),
             revoked=True,
         )
         assert refresh_token.is_valid() is False
@@ -364,6 +364,6 @@ class TestRefreshToken:
         refresh_token = RefreshToken.create(
             token="expired-refresh-2",
             access_token=test_access_token,
-            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+            expires_at=datetime.now(UTC) - timedelta(days=1),
         )
         assert refresh_token.is_valid() is False

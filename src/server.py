@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dotenv import load_dotenv
 from flasgger import Swagger
@@ -89,7 +89,7 @@ def dashboard():
     user = get_current_user()
     client_count = Client.select().count()
     user_count = User.select().count()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     active_token_count = (
         AccessToken.select()
         .where((AccessToken.revoked is False) & (AccessToken.expires_at > now))

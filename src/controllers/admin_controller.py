@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from flask import Blueprint, jsonify, render_template, request, session
 
@@ -432,7 +432,7 @@ def revoke_expired():
       200:
         description: All expired tokens revoked
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Revoke expired access tokens
     AccessToken.update(revoked=True).where(

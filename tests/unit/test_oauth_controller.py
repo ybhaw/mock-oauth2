@@ -1,7 +1,7 @@
 """Unit tests for src/controllers/oauth_controller.py"""
 
 import base64
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from src.models import (
     AccessToken,
@@ -243,7 +243,7 @@ class TestAuthorizationCodeGrant:
             user=test_user,
             redirect_uri="http://localhost:8080/callback",
             scopes="openid",
-            expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+            expires_at=datetime.now(UTC) - timedelta(minutes=1),
         )
 
         response = client.post(
