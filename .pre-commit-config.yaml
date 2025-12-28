@@ -1,20 +1,16 @@
 repos:
-  - repo: local
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
     hooks:
       - id: black
-        name: black
-        entry: black
-        language: system
-        types: [python]
 
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
       - id: isort
-        name: isort
-        entry: isort
-        language: system
-        types: [python]
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.4
+    hooks:
       - id: ruff
-        name: ruff
-        entry: ruff check --fix
-        language: system
-        types: [python]
+        args: [--fix]
