@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Mock OAuth2 Server{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="nav">
+        <a href="/">Home</a>
+        {% if user %}
+            <span>Logged in as <strong>{{ user.username }}</strong></span>
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+        {% endif %}
+    </div>
+
+    <h1>Mock OAuth2 Server</h1>
+    <p>A simple OAuth2 authorization server for testing and development.</p>
+
+    <h2>Registered Clients</h2>
+    {% if clients %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Client ID</th>
+                <th>Redirect URIs</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for client in clients %}
+            <tr>
+                <td>{{ client.name }}</td>
+                <td><code>{{ client.client_id }}</code></td>
+                <td><code>{{ client.redirect_uris }}</code></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No clients registered yet.</p>
+    {% endif %}
+
+    <h2>Register New Client</h2>
+    <form id="registerForm">
+        <label for="name">Application Name</label>
+        <input type="text" id="name" name="name" required placeholder="My App">
+
+        <label for="redirect_uris">Redirect URIs (space-separated)</label>
+        <input type="text" id="redirect_uris" name="redirect_uris" placeholder="http://localhost:8080/callback">
+
+        <label for="scopes">Allowed Scopes (space-separated)</label>
+        <input type="text" id="scopes" name="scopes" value="openid profile email" placeholder="openid profile email">
+
+        <button type="submit" class="btn btn-primary">Register Client</button>
+    </form>
+
+    <div id="result" style="display: none; margin-top: 20px;"></div>
+
+    <h2>Endpoints</h2>
+    <table>
+        <tr>
+            <td>Authorization</td>
+            <td><code>GET /authorize</code></td>
+        </tr>
+        <tr>
+            <td>Token</td>
+            <td><code>POST /token</code></td>
+        </tr>
+        <tr>
+            <td>Revoke</td>
+            <td><code>POST /revoke</code></td>
+        </tr>
+        <tr>
+            <td>User Info</td>
+            <td><code>GET /userinfo</code></td>
+        </tr>
+        <tr>
+            <td>Metadata</td>
+            <td><code>GET /.well-known/oauth-authorization-server</code></td>
+        </tr>
+    </table>
+
+    <h2>Test Credentials</h2>
+    <p>A test user and client are created automatically:</p>
+    <ul>
+        <li><strong>User:</strong> <code>testuser</code> / <code>testpass</code></li>
+        <li><strong>Client ID:</strong> <code>test-client</code></li>
+        <li><strong>Client Secret:</strong> <code>test-secret</code></li>
+    </ul>
+</div>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
+    try {
+        const response = await fetch('/register-client', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        const resultDiv = document.getElementById('result');
+        if (response.ok) {
+            resultDiv.className = 'success';
+            resultDiv.innerHTML = `
+                <strong>Client registered successfully!</strong><br>
+                <strong>Client ID:</strong> <code>${data.client_id}</code><br>
+                <strong>Client Secret:</strong> <code>${data.client_secret}</code><br>
+                <em>Save these credentials - the secret cannot be retrieved later.</em>
+            `;
+            e.target.reset();
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            resultDiv.className = 'error';
+            resultDiv.textContent = data.error || 'Registration failed';
+        }
+        resultDiv.style.display = 'block';
+    } catch (err) {
+        console.error(err);
+    }
+});
+</script>
+{% endblock %}

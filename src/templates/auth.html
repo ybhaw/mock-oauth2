@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Auth Management - Mock OAuth2 Server{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/admin/clients">Clients</a>
+        <a href="/admin/users">Users</a>
+        <a href="/admin/auth">Auth</a>
+        <a href="/swagger">API Docs</a>
+    </div>
+
+    <h1>Auth Management</h1>
+    <p>View and manage tokens and authorization codes.</p>
+
+    <div class="actions-bar">
+        <button class="btn btn-danger" onclick="revokeAllExpired()">Revoke All Expired</button>
+        <button class="btn btn-danger" onclick="revokeAll()">Revoke All Tokens</button>
+    </div>
+
+    <h2>Access Tokens</h2>
+    {% if access_tokens %}
+    <table>
+        <thead>
+            <tr>
+                <th>Token (truncated)</th>
+                <th>Client</th>
+                <th>User</th>
+                <th>Scopes</th>
+                <th>Expires At</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token in access_tokens %}
+            <tr class="{% if token.revoked %}revoked{% elif token.is_expired() %}expired{% endif %}">
+                <td><code>{{ token.token[:16] }}...</code></td>
+                <td>{{ token.client.name }}</td>
+                <td>{{ token.user.username if token.user else 'N/A (client credentials)' }}</td>
+                <td><code>{{ token.scopes }}</code></td>
+                <td>{{ token.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if token.revoked %}
+                        <span class="status-badge revoked">Revoked</span>
+                    {% elif token.is_expired() %}
+                        <span class="status-badge expired">Expired</span>
+                    {% else %}
+                        <span class="status-badge active">Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not token.revoked %}
+                    <button class="btn btn-danger btn-sm" onclick="revokeToken({{ token.id }})">Revoke</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No access tokens found.</p>
+    {% endif %}
+
+    <h2>Refresh Tokens</h2>
+    {% if refresh_tokens %}
+    <table>
+        <thead>
+            <tr>
+                <th>Token (truncated)</th>
+                <th>Access Token</th>
+                <th>Expires At</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token in refresh_tokens %}
+            <tr class="{% if token.revoked %}revoked{% elif token.is_expired() %}expired{% endif %}">
+                <td><code>{{ token.token[:16] }}...</code></td>
+                <td><code>{{ token.access_token.token[:16] }}...</code></td>
+                <td>{{ token.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if token.revoked %}
+                        <span class="status-badge revoked">Revoked</span>
+                    {% elif token.is_expired() %}
+                        <span class="status-badge expired">Expired</span>
+                    {% else %}
+                        <span class="status-badge active">Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not token.revoked %}
+                    <button class="btn btn-danger btn-sm" onclick="revokeRefreshToken({{ token.id }})">Revoke</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No refresh tokens found.</p>
+    {% endif %}
+
+    <h2>Authorization Codes</h2>
+    {% if auth_codes %}
+    <table>
+        <thead>
+            <tr>
+                <th>Code (truncated)</th>
+                <th>Client</th>
+                <th>User</th>
+                <th>Scopes</th>
+                <th>Expires At</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for code in auth_codes %}
+            <tr class="{% if code.used %}used{% elif code.is_expired() %}expired{% endif %}">
+                <td><code>{{ code.code[:16] }}...</code></td>
+                <td>{{ code.client.name }}</td>
+                <td>{{ code.user.username }}</td>
+                <td><code>{{ code.scopes }}</code></td>
+                <td>{{ code.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if code.used %}
+                        <span class="status-badge used">Used</span>
+                    {% elif code.is_expired() %}
+                        <span class="status-badge expired">Expired</span>
+                    {% else %}
+                        <span class="status-badge active">Active</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No authorization codes found.</p>
+    {% endif %}
+</div>
+
+<style>
+    .actions-bar {
+        margin: 20px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .status-badge.active {
+        background: #d4edda;
+        color: #155724;
+    }
+    .status-badge.expired {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .status-badge.revoked, .status-badge.used {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    tr.revoked, tr.expired, tr.used {
+        opacity: 0.6;
+    }
+</style>
+
+<script>
+async function revokeToken(tokenId) {
+    if (!confirm('Are you sure you want to revoke this access token?')) return;
+
+    try {
+        const response = await fetch(`/admin/auth/access-tokens/${tokenId}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Revoke failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function revokeRefreshToken(tokenId) {
+    if (!confirm('Are you sure you want to revoke this refresh token?')) return;
+
+    try {
+        const response = await fetch(`/admin/auth/refresh-tokens/${tokenId}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Revoke failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function revokeAllExpired() {
+    if (!confirm('Are you sure you want to revoke all expired tokens?')) return;
+
+    try {
+        const response = await fetch('/admin/auth/revoke-expired', {
+            method: 'POST'
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Revoke failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function revokeAll() {
+    if (!confirm('Are you sure you want to revoke ALL tokens? This cannot be undone.')) return;
+
+    try {
+        const response = await fetch('/admin/auth/revoke-all', {
+            method: 'POST'
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Revoke failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{% if register %}Register{% else %}Login{% endif %} - Mock OAuth2 Server{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 400px; margin: 50px auto;">
+    <h1>{% if register %}Register{% else %}Login{% endif %}</h1>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+            {% if register %}Register{% else %}Login{% endif %}
+        </button>
+    </form>
+
+    <p style="margin-top: 20px; text-align: center;">
+        {% if register %}
+            Already have an account? <a href="/login">Login</a>
+        {% else %}
+            Don't have an account? <a href="/register">Register</a>
+        {% endif %}
+    </p>
+
+    {% if not register %}
+    <p style="text-align: center; color: #666; font-size: 13px;">
+        Test user: <code>testuser</code> / <code>testpass</code>
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

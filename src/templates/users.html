@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - Mock OAuth2 Server{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/admin/clients">Clients</a>
+        <a href="/admin/users">Users</a>
+        <a href="/admin/auth">Auth</a>
+        <a href="/swagger">API Docs</a>
+    </div>
+
+    <h1>User Management</h1>
+    <p>Manage user accounts.</p>
+
+    <h2>Create New User</h2>
+    <form id="createUserForm">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required placeholder="johndoe">
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required placeholder="Enter password">
+
+        <button type="submit" class="btn btn-primary">Create User</button>
+    </form>
+
+    <div id="result" style="display: none; margin-top: 20px;"></div>
+
+    <h2>Registered Users</h2>
+    {% if users %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr id="user-{{ u.id }}">
+                <td>{{ u.id }}</td>
+                <td><code>{{ u.username }}</code></td>
+                <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else 'N/A' }}</td>
+                <td>
+                    <button class="btn btn-secondary btn-sm" onclick="resetPassword({{ u.id }}, '{{ u.username }}')">Reset Password</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser({{ u.id }}, '{{ u.username }}')">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No users registered yet.</p>
+    {% endif %}
+</div>
+
+<!-- Reset Password Modal -->
+<div id="passwordModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Reset Password</h3>
+        <p>Reset password for user: <strong id="resetUsername"></strong></p>
+        <form id="resetPasswordForm">
+            <input type="hidden" id="reset_user_id" name="user_id">
+            <label for="new_password">New Password</label>
+            <input type="password" id="new_password" name="new_password" required>
+
+            <div style="margin-top: 15px;">
+                <button type="submit" class="btn btn-primary">Reset Password</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 400px;
+    }
+</style>
+
+<script>
+document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
+    try {
+        const response = await fetch('/admin/users', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        const resultDiv = document.getElementById('result');
+        if (response.ok) {
+            resultDiv.className = 'success';
+            resultDiv.innerHTML = `<strong>User "${data.username}" created successfully!</strong>`;
+            e.target.reset();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            resultDiv.className = 'error';
+            resultDiv.textContent = data.error || 'Creation failed';
+        }
+        resultDiv.style.display = 'block';
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+function resetPassword(userId, username) {
+    document.getElementById('reset_user_id').value = userId;
+    document.getElementById('resetUsername').textContent = username;
+    document.getElementById('passwordModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('passwordModal').style.display = 'none';
+}
+
+document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const userId = formData.get('user_id');
+
+    try {
+        const response = await fetch(`/admin/users/${userId}/password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                password: formData.get('new_password')
+            })
+        });
+        if (response.ok) {
+            alert('Password reset successfully!');
+            closeModal();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Reset failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+async function deleteUser(userId, username) {
+    if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+
+    try {
+        const response = await fetch(`/admin/users/${userId}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Delete failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+</script>
+{% endblock %}

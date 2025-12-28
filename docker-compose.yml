@@ -1,0 +1,20 @@
+services:
+  oauth2-server:
+    build: .
+    container_name: mock-oauth2-server
+    ports:
+      - "8083:8083"
+    volumes:
+      - oauth2-data:/data
+    environment:
+      - HOST=0.0.0.0
+      - DEBUG=false
+      - SECRET_KEY=${SECRET_KEY:-}
+      - TEST_USER_USERNAME=${TEST_USER_USERNAME:-testuser}
+      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD:-testpass}
+      - TEST_CLIENT_ID=${TEST_CLIENT_ID:-test-client}
+      - TEST_CLIENT_SECRET=${TEST_CLIENT_SECRET:-test-secret}
+    restart: unless-stopped
+
+volumes:
+  oauth2-data:

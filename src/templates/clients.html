@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Client Management - Mock OAuth2 Server{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/admin/clients">Clients</a>
+        <a href="/admin/users">Users</a>
+        <a href="/admin/auth">Auth</a>
+        <a href="/swagger">API Docs</a>
+    </div>
+
+    <h1>Client Management</h1>
+    <p>Manage OAuth2 client applications.</p>
+
+    <h2>Register New Client</h2>
+    <form id="registerForm">
+        <label for="name">Application Name</label>
+        <input type="text" id="name" name="name" required placeholder="My App">
+
+        <label for="redirect_uris">Redirect URIs (space-separated)</label>
+        <input type="text" id="redirect_uris" name="redirect_uris" placeholder="http://localhost:8080/callback">
+
+        <label for="scopes">Allowed Scopes (space-separated)</label>
+        <input type="text" id="scopes" name="scopes" value="openid profile email" placeholder="openid profile email">
+
+        <button type="submit" class="btn btn-primary">Register Client</button>
+    </form>
+
+    <div id="result" style="display: none; margin-top: 20px;"></div>
+
+    <h2>Registered Clients</h2>
+    {% if clients %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Client ID</th>
+                <th>Redirect URIs</th>
+                <th>Scopes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for client in clients %}
+            <tr id="client-{{ client.id }}">
+                <td>{{ client.name }}</td>
+                <td><code>{{ client.client_id }}</code></td>
+                <td><code>{{ client.redirect_uris or 'None' }}</code></td>
+                <td><code>{{ client.allowed_scopes }}</code></td>
+                <td>
+                    <button class="btn btn-secondary btn-sm" onclick="editClient({{ client.id }}, '{{ client.name }}', '{{ client.redirect_uris }}', '{{ client.allowed_scopes }}')">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteClient({{ client.id }}, '{{ client.client_id }}')">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No clients registered yet.</p>
+    {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Edit Client</h3>
+        <form id="editForm">
+            <input type="hidden" id="edit_id" name="id">
+            <label for="edit_name">Application Name</label>
+            <input type="text" id="edit_name" name="name" required>
+
+            <label for="edit_redirect_uris">Redirect URIs (space-separated)</label>
+            <input type="text" id="edit_redirect_uris" name="redirect_uris">
+
+            <label for="edit_scopes">Allowed Scopes (space-separated)</label>
+            <input type="text" id="edit_scopes" name="scopes">
+
+            <div style="margin-top: 15px;">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 500px;
+    }
+</style>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
+    try {
+        const response = await fetch('/admin/clients', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        const resultDiv = document.getElementById('result');
+        if (response.ok) {
+            resultDiv.className = 'success';
+            resultDiv.innerHTML = `
+                <strong>Client registered successfully!</strong><br>
+                <strong>Client ID:</strong> <code>${data.client_id}</code><br>
+                <strong>Client Secret:</strong> <code>${data.client_secret}</code><br>
+                <em>Save these credentials - the secret cannot be retrieved later.</em>
+            `;
+            e.target.reset();
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            resultDiv.className = 'error';
+            resultDiv.textContent = data.error || 'Registration failed';
+        }
+        resultDiv.style.display = 'block';
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+function editClient(id, name, redirectUris, scopes) {
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_redirect_uris').value = redirectUris;
+    document.getElementById('edit_scopes').value = scopes;
+    document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const id = formData.get('id');
+
+    try {
+        const response = await fetch(`/admin/clients/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: formData.get('name'),
+                redirect_uris: formData.get('redirect_uris'),
+                allowed_scopes: formData.get('scopes')
+            })
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Update failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+async function deleteClient(id, clientId) {
+    if (!confirm(`Are you sure you want to delete client "${clientId}"?`)) return;
+
+    try {
+        const response = await fetch(`/admin/clients/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Delete failed');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+</script>
+{% endblock %}

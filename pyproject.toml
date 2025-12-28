@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mock-oauth2"
+version = "0.1.0"
+description = "Mock OAuth2 server for testing OAuth2 flows"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "Flask>=3.0",
+    "peewee>=3.17",
+    "python-dotenv>=1.0",
+    "flasgger>=0.9.7",
+    "waitress>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=24.0",
+    "isort>=5.13",
+    "ruff>=0.8",
+    "pre-commit>=4.0",
+]
+
+[project.scripts]
+mock-oauth2 = "src.server:app.run"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = []
